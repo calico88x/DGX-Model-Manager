@@ -1,0 +1,16 @@
+{
+  "app": {
+    "host": "0.0.0.0",
+    "port": 8090,
+    "display_name": "DGX Spark"
+  },
+  "services": {
+    "ollama_base":  "http://127.0.0.1:11434",
+    "litellm_base": "http://127.0.0.1:4000",
+    "sglang_base":  "http://127.0.0.1:30000"
+  },
+  "paths": {
+    "litellm_config": "~/litellm/litellm_config.yaml",
+    "hf_cache":       "~/.cache/huggingface/hub"
+  }
+}
