@@ -17,7 +17,7 @@ from typing import AsyncGenerator, Optional
 import httpx
 import yaml
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 import uvicorn
 
@@ -184,10 +184,17 @@ async def pull_ollama_model(req: PullRequest):
 @app.delete("/api/ollama/models/{name:path}")
 async def delete_ollama_model(name: str):
     try:
-        async with httpx.AsyncClient(timeout=30.0) as c:
+        async with httpx.AsyncClient(timeout=60.0) as c:
             r = await c.delete(OLLAMA_BASE + "/api/delete", json={"name": name})
+            if r.status_code == 404:
+                raise HTTPException(404, f"Model '{name}' not found in Ollama")
             if r.status_code not in (200, 204):
-                raise HTTPException(r.status_code, r.text)
+                try:
+                    detail = r.json()
+                    msg = detail.get("error", r.text)
+                except Exception:
+                    msg = r.text
+                raise HTTPException(r.status_code, msg)
         return {"ok": True}
     except HTTPException:
         raise
@@ -375,6 +382,7 @@ HTML = r"""<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DGX Model Manager</title>
+<link rel="icon" type="image/png" href="/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -896,7 +904,11 @@ async function deleteModel(name, btn) {
   btn.disabled=true; btn.innerHTML='…';
   try {
     const r = await fetch('/api/ollama/models/'+encodeURIComponent(name),{method:'DELETE'});
-    if (!r.ok) throw new Error(await r.text());
+    if (!r.ok) {
+      let msg = r.statusText;
+      try { const d = await r.json(); msg = d.detail || JSON.stringify(d); } catch(e) { msg = await r.text(); }
+      throw new Error(msg);
+    }
     toast('✓ Deleted '+name,'ok'); loadOllamaModels();
   } catch(e) { toast('Delete failed: '+e.message,'err'); btn.disabled=false; btn.innerHTML='✕'; }
 }
@@ -1011,11 +1023,17 @@ async function startSGLang() {
   prog.classList.add('show'); log.textContent='Sending start command…';
   try {
     const d = await apiFetch('/api/sglang/start','POST',{profile:selectedProfile});
-    toast('✓ SGLang starting','ok'); log.textContent=d.message+'\n\nPolling every 20 seconds…';
+    toast('✓ SGLang launching — ~5 min warm-up','ok');
+    log.textContent=d.message+'\n\nPolling every 20 seconds — ready toast fires when model is loaded…';
     const poll=setInterval(async()=>{
+      const status = await apiFetch('/api/sglang/status');
       await loadSGLangStatus();
-      if (document.getElementById('engine-led').classList.contains('on')) {
-        clearInterval(poll); toast('✓ SGLang is ready!','ok'); prog.classList.remove('show');
+      if (status.running && status.model) {
+        clearInterval(poll);
+        toast('✓ SGLang is ready — '+status.model.split('/').pop(),'ok');
+        prog.classList.remove('show');
+      } else if (status.running && !status.model) {
+        log.textContent=d.message+'\n\nContainer running — model still loading…';
       }
     },20000);
   } catch(e) { toast('Start failed: '+e.message,'err'); prog.classList.remove('show'); }
@@ -1070,6 +1088,14 @@ function toast(msg, type) {
 @app.get("/", response_class=HTMLResponse)
 async def root():
     return HTMLResponse(HTML)
+
+
+@app.get("/favicon.png")
+async def favicon():
+    favicon_path = Path(__file__).parent / "favicon.png"
+    if not favicon_path.exists():
+        raise HTTPException(404, "favicon.png not found")
+    return FileResponse(favicon_path, media_type="image/png")
 
 
 @app.get("/help", response_class=HTMLResponse)

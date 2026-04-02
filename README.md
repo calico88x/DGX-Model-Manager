@@ -1,6 +1,6 @@
-# DGX Model Manager
+# DGX Spark Model Manager
 
-A lightweight web UI for managing AI models on the **NVIDIA DGX Spark** (GB10, 128 GB unified memory). Pull Ollama models, download from HuggingFace, manage LiteLLM routing, and control SGLang — all from one browser tab.
+A lightweight web UI for managing AI models on the **NVIDIA DGX Spark / HP ZGX Nano G1n** (GB10, 128 GB unified memory). Pull Ollama models, download from HuggingFace, manage LiteLLM routing, and control SGLang — all from one browser tab.
 
 ![Python](https://img.shields.io/badge/python-3.10+-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Platform](https://img.shields.io/badge/platform-aarch64%20Ubuntu-orange)
 
@@ -120,7 +120,18 @@ sudo docker run --rm --gpus all --ipc=host \
     --tool-call-parser mistral
 ```
 
-> **GB10 / SM121A note:** Do not use `--quantization modelopt_fp4` or `--fp4-gemm-backend` — these flags cause PTXAS failures on the GB10 architecture. Always use `--attention-backend triton`.
+> **GB10 / SM121A note:** The GB10 uses the `sm_121a` architecture which older bundled `ptxas` versions don't recognise. Two workarounds are available:
+>
+> **Option A — recommended:** Set `TRITON_PTXAS_PATH=/usr/local/cuda/bin/ptxas` in your Docker environment. This tells Triton to use the system CUDA `ptxas` which natively supports SM121A, and allows you to use the FlashInfer attention backend:
+> ```bash
+> docker run ... \
+>   -e TRITON_PTXAS_PATH=/usr/local/cuda/bin/ptxas \
+>   ...
+> ```
+>
+> **Option B — fallback:** Add `--attention-backend triton` to your SGLang launch flags. This bypasses the broken `ptxas` path entirely. Do not use `--quantization modelopt_fp4` or `--fp4-gemm-backend` alongside this option.
+>
+> See [triton-lang/triton#8539](https://github.com/triton-lang/triton/issues/8539) for upstream tracking.
 
 ---
 
