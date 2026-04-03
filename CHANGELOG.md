@@ -6,6 +6,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.0.4] - 2026-04-03
+
+### Fixed
+
+- **Ollama model delete (for real this time)** — `httpx.AsyncClient.delete()` does not support the `json=` keyword argument, which caused every delete to fail with `AsyncClient.delete() got an unexpected keyword argument 'json'`. Changed to `c.request("DELETE", ...)` which correctly sends the JSON body. Timeout increased to 60s and 404 handling added for clearer error messages.
+
+- **Favicon route missing** — the `/favicon.png` route and `<link rel="icon">` tag were documented in the changelog but never committed. Added both, plus the `FileResponse` import.
+
+### Added
+
+- **Dynamic node info** — header bar and SGLang engine footer are no longer hardcoded. New `/api/nodeinfo` endpoint detects hostname, LAN IP, port, architecture, and total memory at runtime. The UI fetches this on page load via JavaScript.
+
+- **`config.json` loading** — `app.py` now reads `~/model-manager/config.json` at startup. The port for `uvicorn.run()` is pulled from `app.port` instead of being hardcoded to `8090`.
+
+---
+
 ## [0.0.2] - 2026-04-02
 
 ### Fixed
