@@ -202,28 +202,6 @@ Your Apps (OpenClaw, Open WebUI, scripts, etc.)
 
 ---
 
-## Model Recommendations for DGX Spark (128 GB)
-
-### With SGLang running (~31 GB available for Ollama)
-
-| Model | Pull Name | Size | Use Case |
-|-------|-----------|------|----------|
-| Qwen2.5 Coder 32B | `qwen2.5-coder:32b` | ~20 GB | Coding |
-| QwQ 32B | `qwq:32b` | ~20 GB | Reasoning |
-| Phi-4 | `phi4` | ~8 GB | General, fast |
-| DeepSeek-R1 14B | `deepseek-r1:14b` | ~9 GB | Reasoning |
-| Nomic Embed | `nomic-embed-text` | <1 GB | Embeddings/RAG |
-
-### With SGLang stopped (full 128 GB)
-
-| Model | Pull Name | Size | Use Case |
-|-------|-----------|------|----------|
-| Qwen3 Coder Next | `qwen3-coder-next` | ~54 GB | Agentic coding, 256K context |
-| DeepSeek-R1 70B | `deepseek-r1:70b` | ~43 GB | Heavy reasoning |
-| Qwen2.5 72B | `qwen2.5:72b` | ~45 GB | General, large |
-
----
-
 ## License
 
 MIT
