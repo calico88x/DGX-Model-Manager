@@ -8,6 +8,8 @@ Port: 8090  |  Run via systemd: model-manager.service
 import asyncio
 import json
 import os
+import platform
+import socket
 import subprocess
 from pathlib import Path
 from typing import AsyncGenerator, Optional
@@ -15,7 +17,7 @@ from typing import AsyncGenerator, Optional
 import httpx
 import yaml
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 import uvicorn
 
@@ -26,6 +28,41 @@ LITELLM_BASE   = "http://127.0.0.1:4000"
 SGLANG_BASE    = "http://127.0.0.1:30000"
 LITELLM_CONFIG = Path(os.path.expanduser("~/litellm/litellm_config.yaml"))
 PROFILES_FILE  = Path(os.path.expanduser("~/model-manager/sglang_profiles.json"))
+
+# Load app config
+_CONFIG_FILE = Path(os.path.expanduser("~/model-manager/config.json"))
+_app_config: dict = {}
+if _CONFIG_FILE.exists():
+    try:
+        _app_config = json.loads(_CONFIG_FILE.read_text())
+    except Exception:
+        pass
+APP_PORT = _app_config.get("app", {}).get("port", 8090)
+
+
+def _get_local_ip() -> str:
+    """Best-effort LAN IP detection."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+
+def _get_total_memory_gb() -> int:
+    """Total system memory in GB."""
+    try:
+        with open("/proc/meminfo") as f:
+            for line in f:
+                if line.startswith("MemTotal:"):
+                    kb = int(line.split()[1])
+                    return round(kb / 1024 / 1024)
+    except Exception:
+        pass
+    return 0
 
 # ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -95,6 +132,22 @@ async def get_status():
         "sglang":  {"ok": sglang_ok,  "model": sglang_model},
         "ollama":  {"ok": ollama_ok},
         "litellm": {"ok": litellm_ok},
+    }
+
+@app.get("/api/nodeinfo")
+async def get_nodeinfo():
+    hostname = socket.gethostname()
+    ip = _get_local_ip()
+    arch = platform.machine()
+    mem_gb = _get_total_memory_gb()
+    sglang_port = SGLANG_BASE.rsplit(":", 1)[-1]
+    return {
+        "hostname": hostname,
+        "ip": ip,
+        "port": APP_PORT,
+        "arch": arch,
+        "memory_gb": mem_gb,
+        "sglang_port": sglang_port,
     }
 
 # ── Ollama ────────────────────────────────────────────────────────────────────
@@ -334,6 +387,7 @@ HTML = r"""<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ZGX · Model Manager</title>
+<link rel="icon" type="image/png" href="/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -740,7 +794,7 @@ body::before{
     <div class="hdr-sigil">Z</div>
     <div>
       <div class="hdr-name">Model Manager</div>
-      <div class="hdr-node">zgx-40e6 · 192.168.3.51 · :8090</div>
+      <div class="hdr-node" id="hdr-node">loading…</div>
     </div>
   </div>
   <div class="hdr-sep"></div>
@@ -883,7 +937,7 @@ body::before{
             <button class="btn btn-danger" id="stop-btn" onclick="stopSGLang()" disabled>■ Stop</button>
           </div>
         </div>
-        <div class="engine-footer">Port :30000 · Docker · aarch64 GB10 · 128 GB unified memory</div>
+        <div class="engine-footer" id="engine-footer">loading…</div>
       </div>
 
       <div class="sec-label">Profiles</div>
@@ -923,8 +977,24 @@ let statusTimer = null;
 document.addEventListener('DOMContentLoaded', () => {
   pollStatus();
   loadOllamaModels();
+  loadNodeInfo();
   statusTimer = setInterval(pollStatus, 12000);
 });
+
+async function loadNodeInfo() {
+  try {
+    const r = await fetch('/api/nodeinfo');
+    const d = await r.json();
+    document.getElementById('hdr-node').textContent =
+      d.hostname + ' \u00b7 ' + d.ip + ' \u00b7 :' + d.port;
+    const parts = ['Port :' + d.sglang_port, 'Docker'];
+    if (d.arch) parts.push(d.arch);
+    if (d.memory_gb) parts.push(d.memory_gb + ' GB memory');
+    document.getElementById('engine-footer').textContent = parts.join(' \u00b7 ');
+  } catch(e) {
+    document.getElementById('hdr-node').textContent = 'could not detect';
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tab switching
@@ -1368,6 +1438,14 @@ async def root():
     return HTMLResponse(HTML)
 
 
+@app.get("/favicon.png")
+async def favicon():
+    path = Path(os.path.expanduser("~/model-manager/favicon.png"))
+    if not path.exists():
+        raise HTTPException(404)
+    return FileResponse(path, media_type="image/png")
+
+
 @app.get("/help", response_class=HTMLResponse)
 async def help_page():
     docs_path = Path(os.path.expanduser("~/model-manager/docs.html"))
@@ -1377,4 +1455,4 @@ async def help_page():
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8090, log_level="info")
+    uvicorn.run(app, host="0.0.0.0", port=APP_PORT, log_level="info")
