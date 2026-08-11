@@ -1,5 +1,10 @@
-fastapi==0.115.6
-uvicorn==0.32.1
-httpx==0.28.1
-pyyaml==6.0.2
-huggingface_hub==0.27.1
+fastapi>=0.128,<1
+uvicorn[standard]>=0.35,<1
+httpx>=0.28,<1
+pyyaml>=6.0,<7
+huggingface_hub>=1.0,<2
+argon2-cffi>=23.1,<26
+psutil>=7.0,<8
+jinja2>=3.1,<4
+cryptography>=45,<47
+python-multipart>=0.0.20,<1

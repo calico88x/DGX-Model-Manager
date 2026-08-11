@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python -m pip install --upgrade pip
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: python -m compileall -q app.py agent.py dgx_manager scripts
+      - run: node --check static/app.js
+      - run: bash -n setup.sh setup-agent.sh scripts/promote_v2.sh
+      - run: pytest -q
+      - run: python scripts/validate_release.py

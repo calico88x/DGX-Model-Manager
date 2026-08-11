@@ -1,399 +1,815 @@
-# <img src="misc/modman.png" width="26"> DGX Model Manager
+# DGX Model Manager v2
 
-A single-file web UI for managing AI models and inference engines on **NVIDIA DGX Spark** and compatible aarch64 GPU systems. Pull Ollama models, browse HuggingFace, manage your local model inventory, route through LiteLLM, and control five inference engines — all from one browser tab.
+DGX Model Manager v2 is a secure, Compose-first control plane for NVIDIA DGX Spark model operations.
 
-![Python](https://img.shields.io/badge/python-3.10+-blue) ![Platform](https://img.shields.io/badge/Server-NVIDIA_DGX_Spark-76B900?style=flat&logo=nvidia&logoColor=white) ![License](https://img.shields.io/badge/license-MIT-green) ![Platform](https://img.shields.io/badge/platform-aarch64%20Ubuntu-orange) ![Single File](https://img.shields.io/badge/architecture-single%20file-yellow)
+It provides one authenticated web interface for:
 
----
+- local Hugging Face model inventory
+- Ollama model discovery and downloads
+- Hugging Face search, file inspection, download, and deletion
+- DGX-aware Compose generation
+- saved deployment lifecycle management
+- serving-engine discovery
+- LiteLLM routing and configuration visibility
+- host, Docker, and service diagnostics
+- users, roles, API tokens, and audit history
+- optional multi-node DGX Spark management
 
-## What It Does
+The manager controls model-serving infrastructure. It does **not** proxy inference traffic itself.
 
-DGX Model Manager is a **lightweight control panel** for AI infrastructure. It doesn't serve models itself — it orchestrates the services that do.
-
-| Capability | Details |
-|-----------|---------|
-| **Ollama Management** | Pull, list, and delete models with live download progress |
-| **LiteLLM Routing** | One-click wildcard routing so every Ollama model is auto-exposed to all apps |
-| **5 Inference Engines** | Start/stop SGLang, vLLM, llama.cpp, LocalAI, and ComfyUI via configurable profiles |
-| **Model Inventory** | Unified view of all local models — HF cache, custom directories, Ollama — with format/task/source filtering |
-| **HuggingFace Browser** | Search HF Hub, discover quantized variants, preview files, one-click download |
-| **HuggingFace Download** | Stream any model from HF Hub to local cache with resume support |
-| **Live Status Bar** | Real-time health indicators for all 7 services |
-| **Logs & Diagnostics** | System overview, app logs, engine logs, LiteLLM journalctl, Docker state — all in-browser |
-| **Settings & Security** | Configurable service URLs, optional API key authentication, connectivity testing |
-| **Built-in Documentation** | Full user manual at `/help` |
+Version: **2.0.0**
 
 ---
 
-## Stack Architecture
+## Screenshots
 
-```
-Your Apps (Open WebUI, agents, scripts, any OpenAI-compatible client)
-         |
-         v
-   LiteLLM :4000  ──────────────────┬────────────┬──────────────┐
-         |                          |            |              |
-         v                          v            v              v
-  SGLang :30000               Ollama :11434   vLLM :8000    llama.cpp :8080
-  (large models)              (small/medium,  (alternative   (GGUF models)
-                               hot-swap)       engine)
+### Dashboard
 
-  Also managed:  LocalAI :9090 (multi-modal)  |  ComfyUI :8188 (image gen UI)
+![Dashboard](misc/screenshots/dashboard.png)
 
-  Model Manager :8090  <-- this app (sits alongside, never in request path)
-```
+### Compose Builder
 
-The Model Manager talks directly to each service's API and to Docker for container lifecycle. It never proxies inference requests.
+![Compose Builder](misc/screenshots/compose-builder.png)
+
+### Model inventory
+
+![Inventory](misc/screenshots/inventory.png)
+
+### Compose deployments
+
+![Deployments](misc/screenshots/deployments.png)
+
+### Cluster management
+
+![Cluster](misc/screenshots/cluster.png)
+
+### Users and access
+
+![Users and access](misc/screenshots/users-access.png)
+
+---
+
+## Major v2 capabilities
+
+### Model inventory
+
+DGX Model Manager scans the standard Hugging Face cache and optional custom model directories.
+
+Inventory metadata includes, where determinable:
+
+- model owner and repository
+- task / modality classification
+- checkpoint format
+- base dtype
+- checkpoint precision
+- quantization implementation and format
+- mixed quantization metadata
+- logical parameter count
+- physical local storage usage
+
+Hugging Face cache accounting de-duplicates shared blob/snapshot inodes so model storage totals reflect physical local usage rather than counting cache links multiple times.
+
+Metadata-only Hugging Face cache entries are excluded from installed-model inventory.
+
+For non-quantized Safetensors checkpoints, parameter counts and dtype information are derived directly from Safetensors headers without loading tensor data.
+
+Quantized derivatives can resolve logical parameter counts from their declared upstream base model rather than treating packed checkpoint tensor shapes as full-precision logical parameter counts.
+
+Remote Hugging Face enrichment is cached locally and is optional: an unavailable network does not break local inventory.
 
 ---
 
 ## Requirements
 
-| Component | Required | Notes |
-|-----------|----------|-------|
-| Python 3.10+ | Yes | Pre-installed on DGX Spark |
-| [Ollama](https://ollama.com) | Yes | Core model management |
-| Docker | Recommended | Required for engine start/stop (SGLang, vLLM, LocalAI, ComfyUI) |
-| [LiteLLM](https://github.com/BerriAI/litellm) | Optional | Unified API routing |
-| [SGLang](https://github.com/sgl-project/sglang) | Optional | High-performance inference |
-| [vLLM](https://github.com/vllm-project/vllm) | Optional | Alternative inference engine |
-| [llama.cpp](https://github.com/ggerganov/llama.cpp) | Optional | GGUF model inference |
-| [LocalAI](https://github.com/mudler/LocalAI) | Optional | Multi-modal AI (LLM+TTS+STT+image gen) |
-| [ComfyUI](https://github.com/comfyanonymous/ComfyUI) | Optional | Image generation workflows |
+### Tested manager platform
 
-The app works with just Ollama installed. Every other service tab gracefully shows offline status when its service isn't running.
+The 2.0.0 hardware acceptance run was performed on:
+
+- NVIDIA DGX Spark
+- NVIDIA GB10
+- Linux / aarch64
+- Docker + Docker Compose
+- NVIDIA Container Toolkit
+- Python 3.12
+- systemd 255
+
+Other compatible Linux hosts may work, but DGX Spark / GB10 is the primary target.
+
+### Required software
+
+- Python 3.10+
+- Docker Engine
+- Docker Compose plugin
+- NVIDIA Container Toolkit for GPU-serving deployments
+- systemd for the supplied service installer
+- network access to Hugging Face for search/download/enrichment features
+
+Ollama and LiteLLM are optional integrations.
 
 ---
 
-## Quick Start
+## Safe side-by-side installation
+
+v2 is designed to be tested beside an existing Model Manager installation.
+
+Defaults are intentionally isolated:
+
+- HTTPS port: `8091`
+- systemd service: `model-manager-v2.service`
+- config: `~/.config/dgx-model-manager-v2/config.json`
+- application data: `~/.local/share/dgx-model-manager-v2`
+- Compose state: `~/.local/share/dgx-model-manager-v2/compose`
+
+Extract or clone the project into a separate directory and run:
 
 ```bash
-# 1. Clone the repo
-git clone https://github.com/calico88x/DGX-Model-Manager.git
-cd DGX-Model-Manager
-
-# 2. Create your config from the example
-cp config.example.json config.json
-nano config.json
-
-# 3. Run the interactive setup
 bash setup.sh
-
-# 4. Open in your browser
-#    http://<your-device-ip>:8090
 ```
 
-The setup script handles:
-- Python virtual environment creation
-- Dependency installation (`fastapi`, `uvicorn`, `httpx`, `pyyaml`, `huggingface_hub`)
-- Engine script directories (`~/SGLang/`, `~/vLLM/`, `~/llama.cpp/`, `~/LocalAI/`, `~/ComfyUI/`) with example profiles
-- UFW firewall rule (optional)
-- Passwordless sudo for LiteLLM restart (optional)
-- systemd service installation (optional)
+The installer creates a Python virtual environment, installs dependencies, creates an example-derived local configuration, generates bootstrap TLS material when needed, and can install an independent systemd service.
+
+The existing v1 service is not replaced during the side-by-side installation.
+
+After setup, open:
+
+```text
+https://<dgx-host>:8091
+```
+
+The generated certificate is self-signed unless you replace it with a trusted certificate.
 
 ---
 
-## Configuration
+## First administrator bootstrap
 
-Copy `config.example.json` to `config.json` and edit as needed. The repo ships with the example — `config.json` itself is gitignored so your runtime settings (including hashed API keys) don't dirty the working tree or get pushed upstream. Every field has a sensible default.
+A fresh installation has no default password.
 
-```json
-{
-  "app": {
-    "host": "0.0.0.0",
-    "port": 8090
-  },
-  "services": {
-    "ollama_base":   "http://127.0.0.1:11434",
-    "litellm_base":  "http://127.0.0.1:4000",
-    "sglang_base":   "http://127.0.0.1:30000",
-    "vllm_base":     "http://127.0.0.1:8000",
-    "llamacpp_base": "http://127.0.0.1:8080",
-    "localai_base":  "http://127.0.0.1:9090",
-    "comfyui_base":  "http://127.0.0.1:8188"
-  },
-  "paths": {
-    "litellm_config": "~/litellm/litellm_config.yaml",
-    "hf_cache":       "~/.cache/huggingface/hub"
-  }
-}
+`setup.sh` generates a one-time administrator bootstrap token locally. The token is stored mode `0600`, printed during installation, and deleted after successful bootstrap.
+
+The first administrator therefore requires possession of the host-local bootstrap token rather than merely LAN access to a new installation.
+
+---
+
+## Existing model paths
+
+The default Hugging Face cache remains:
+
+```text
+~/.cache/huggingface/hub
 ```
 
-Service URLs can also be changed at runtime via the **Settings** tab in the UI. Changes are written back to `config.json`.
+The default LiteLLM configuration path remains:
+
+```text
+~/litellm/litellm_config.yaml
+```
+
+Models remain in their existing storage locations. DGX Model Manager references them in place.
+
+Custom model directories can be added from Inventory. Arbitrary system-root locations are rejected by the path-safety policy.
 
 ---
 
 ## Ollama
 
-Pull models with live progress bars, view installed models with size and quantization details, and delete models you no longer need.
+DGX Model Manager talks to an existing Ollama service rather than owning Ollama storage.
 
-<img src="misc/ollama.png" alt="Ollama tab" width="900">
+Supported operations include:
+
+- health discovery
+- installed model listing
+- pull/download
+- delete
+
+An empty Ollama installation is a valid state.
 
 ---
 
-## LiteLLM Routing
+## Hugging Face browser and downloads
 
-The **Apply Wildcard** button adds a single entry to your `litellm_config.yaml`:
+The Hugging Face browser supports:
+
+- repository search
+- task filtering
+- popularity sorting
+- repository file listing with file sizes
+- discovery of likely quantized variants
+- direct download to the normal Hugging Face cache or an approved custom directory
+
+Downloads stream progress to the browser using server-sent events.
+
+Downloaded models appear in Inventory after completion.
+
+Deletion operates on the selected local model directory and requires browser confirmation.
+
+---
+
+## Compose Builder
+
+Compose Builder converts discovered model metadata and target-node capacity into a deployment plan.
+
+Inputs include:
+
+- model
+- serving engine
+- target node
+- context length
+- host memory reserve
+- optimization profile
+- bind address
+- optional LiteLLM routing preparation
+
+Generated plans include:
+
+- Docker image
+- model mount
+- engine command
+- context settings
+- GPU reservation
+- served-model name
+- memory-fit estimate
+- network exposure
+- generator decision notes
+
+### Generated-plan integrity
+
+Generated YAML is intentionally **not editable in the web UI**.
+
+When a plan is saved, the backend preserves its trusted generated structure rather than accepting arbitrary Compose YAML supplied by the browser.
+
+This prevents the Compose Builder from becoming an arbitrary container-definition or host-mount injection interface.
+
+Advanced users can edit saved Compose files directly on the host after generation if they explicitly choose to take responsibility for those changes.
+
+---
+
+## Collision-aware ports
+
+Each engine has a preferred host port, but v2 checks:
+
+1. host ports reserved by already-saved v2 deployments; and
+2. ports actually available for binding on the host.
+
+If the preferred port is unavailable, the generator searches subsequent ports and records the reassignment in its decision notes.
+
+The container's internal service port remains unchanged.
+
+This allows a v2 deployment to coexist with an already-running external service without silently colliding with it.
+
+---
+
+## Quantization handling
+
+Inventory keeps several concepts separate:
+
+- base model dtype
+- checkpoint storage precision
+- quantizer implementation
+- quantization format
+- quantization bit widths
+- mixed-quantization state
+
+For example, an NVFP4 derivative can still have a BF16 base model while the local checkpoint is stored in FP4 or a mixture such as FP4/FP8.
+
+vLLM plans rely on checkpoint auto-detection instead of blindly forcing a quantization mode.
+
+SGLang receives explicit loader arguments only when the metadata is sufficiently specific.
+
+llama.cpp requires compatible GGUF input.
+
+---
+
+## Runtime memory estimate
+
+Compose Builder presents an estimated runtime footprint and compares it with the selected host memory reserve.
+
+The estimate is a planning aid, not a hard resource guarantee. Actual KV-cache and runtime memory requirements vary by architecture, context length, concurrency, engine version, kernel implementation, and quantization.
+
+For DGX Spark's unified-memory architecture, leave meaningful host reserve rather than allocating the entire system to model serving.
+
+---
+
+## Compose deployments
+
+Saving a deployment writes:
+
+```text
+~/.local/share/dgx-model-manager-v2/compose/stacks/<engine>/<slug>/
+├── compose.yaml
+└── deployment.json
+```
+
+**Saving does not start the deployment.**
+
+Saved deployments can be:
+
+- validated
+- started
+- stopped
+- inspected
+- logged
+- routed to LiteLLM when supported
+- archived
+
+Archive performs Compose down for the managed stack and moves its YAML/metadata into the archive directory.
+
+Model checkpoint files are not deleted.
+
+Deployment logs open in an operations-sized viewer suitable for longer engine output.
+
+---
+
+## Service ownership boundary
+
+DGX Model Manager distinguishes between:
+
+- a service that is detectable at a configured endpoint; and
+- a deployment that is actually managed by v2.
+
+This distinction is intentional.
+
+An externally managed vLLM, ComfyUI, or other service may appear **Online**, but v2 will not stop it merely because it occupies the expected engine port.
+
+The Serving Engines **Stop** control is enabled only for a running v2-managed Compose deployment.
+
+The backend independently enforces the same rule and refuses to stop an externally managed service.
+
+---
+
+## LiteLLM integration
+
+LiteLLM can remain the unified OpenAI-compatible gateway for Ollama and generated model-serving deployments.
+
+The Routing page provides:
+
+- active `/v1/models` route discovery
+- redacted LiteLLM configuration display
+- optional Ollama wildcard creation
+- deployment route add/remove support
+
+### Authenticated LiteLLM
+
+If LiteLLM protects `/health` and `/v1/models`, v2 can use the existing `LITELLM_MASTER_KEY` without exposing the broader LiteLLM environment to the application.
+
+During setup, the optional LiteLLM authentication integration copies **only** the master key into a root-owned systemd credential and attaches it with:
+
+```ini
+LoadCredential=litellm_master_key:/etc/dgx-model-manager-v2/litellm_master_key
+```
+
+The application reads that credential from systemd's runtime credentials directory.
+
+It does not need read access to a broader environment file containing unrelated values such as database or salt credentials.
+
+The LiteLLM credential remains server-side and is never returned to the browser.
+
+### LiteLLM restart permission
+
+Routing changes can require a LiteLLM restart.
+
+`setup.sh` can optionally install a narrowly scoped sudo rule allowing the Model Manager service user to run only the required LiteLLM systemctl restart command.
+
+This capability is opt-in.
+
+---
+
+## Secret redaction
+
+Configuration returned to the browser is recursively redacted.
+
+Sensitive keys such as:
+
+- `api_key`
+- `master_key`
+- passwords
+- secrets
+- authorization values
+- credential fields
+- token fields such as `access_token`
+
+are replaced with:
+
+```text
+***REDACTED***
+```
+
+The matcher uses security-relevant key names rather than broad substring matching, so benign settings such as:
 
 ```yaml
-- model_name: ollama/*
-  litellm_params:
-    model: ollama/*
-    api_base: http://127.0.0.1:11434
+max_tokens: 4096
 ```
 
-After this one-time change, every model you pull into Ollama is automatically available to all apps connected to LiteLLM at `:4000` — no further config edits required. LiteLLM restarts automatically.
-
-> The wildcard covers Ollama models only. SGLang, vLLM, and other engines need explicit entries in the LiteLLM config.
-
-<img src="misc/litellm.png" alt="LiteLLM tab" width="900">
+remain visible.
 
 ---
 
-## Inference Engines
+## Accounts and roles
 
-All five engines (SGLang, vLLM, llama.cpp, LocalAI, ComfyUI) share the same profile system. Place shell scripts in the engine's directory and they're automatically discovered:
+Three roles are available:
 
-| Engine | Script Directory | Default Port |
-|--------|-----------------|-------------|
-| SGLang | `~/SGLang/start_*.sh` | 30000 |
-| vLLM | `~/vLLM/start_*.sh` | 8000 |
-| llama.cpp | `~/llama.cpp/start_*.sh` | 8080 |
-| LocalAI | `~/LocalAI/start_*.sh` | 9090 |
-| ComfyUI | `~/ComfyUI/start_*.sh` | 8188 |
+| Role | Observe | Operate | Administer |
+|---|---:|---:|---:|
+| Viewer | Yes | No | No |
+| Operator | Yes | Yes | No |
+| Admin | Yes | Yes | Yes |
 
-### Creating a Profile
+Admins can manage users and issue API tokens.
 
-1. Create a script named `start_*.sh` in the engine's directory
-2. Add optional header comments to control the profile card display
-3. The profile appears in the UI immediately — no restart needed
+Browser sessions use opaque HttpOnly cookies plus CSRF protection.
 
-```bash
-#!/usr/bin/env bash
-# Name: My Model
-# Description: Brief description of this profile
-# VRAM: 48
+Passwords are stored using Argon2id hashes.
 
-sudo docker run --rm --gpus all --ipc=host \
-  --name my-sglang-container \
-  -v ~/.cache/huggingface:/root/.cache/huggingface \
-  -p 30000:30000 \
-  lmsysorg/sglang:latest \
-  python3 -m sglang.launch_server \
-    --model-path /root/.cache/huggingface/hub/models--owner--model/snapshots/main \
-    --host 0.0.0.0 \
-    --port 30000
-```
+### Administrator lockout protection
 
-The three header fields (`# Name:`, `# Description:`, `# VRAM:`) are optional. Without them, the name is derived from the filename and VRAM shows as `--`.
+The backend enforces that at least one active administrator remains.
 
-### SGLang
+An administrator cannot:
 
-<img src="misc/sglang.png" alt="SGLang tab" width="900">
+- disable their own active account; or
+- disable/demote the last active administrator.
 
-### vLLM
-
-<img src="misc/vllm.png" alt="vLLM tab" width="900">
-
-### llama.cpp
-
-<img src="misc/llamacpp.png" alt="llama.cpp tab" width="900">
-
-### LocalAI
-
-<img src="misc/localai.png" alt="LocalAI tab" width="900">
-
-### ComfyUI
-
-ComfyUI has its own web UI — when running, an "Open UI" button appears linking directly to the ComfyUI interface.
-
-<img src="misc/comfyui.png" alt="ComfyUI tab" width="900">
-
-### SGLang vs vLLM
-
-Both engines are excellent choices for large model inference:
-
-| | SGLang | vLLM |
-|---|---|---|
-| **Strengths** | RadixAttention (prefix caching), fast structured output, strong MoE support | Broad model/quantization support, PagedAttention, mature ecosystem |
-| **Docker image** | `lmsysorg/sglang:*` | `vllm/vllm-openai:*` |
-| **Default port** | 30000 | 8000 |
-| **API format** | OpenAI-compatible (`/v1/`) | OpenAI-compatible (`/v1/`) |
-
-Both expose the same OpenAI-compatible API, so your apps don't need to change when switching between them.
+The Users & Access page mirrors those invariants by disabling invalid controls and identifying the signed-in account with a **You** badge.
 
 ---
 
-## Model Inventory
+## API tokens
 
-Unified view of every model on your device across HuggingFace cache, custom directories, and Ollama. Search, filter by source/format/task, sort by name/size/parameters, and enrich with HuggingFace metadata.
+Admins can create scoped API tokens.
 
-<img src="misc/model_inv.png" alt="Model Inventory tab" width="900">
+A token has a maximum assigned role and can never exercise authority above its owner's current effective role.
 
----
-
-## HuggingFace Browser
-
-Search HuggingFace Hub without leaving the app. Filter by pipeline type, sort by downloads/likes/trending. Result cards show task badges, download counts, and format tags. Expand any result to see its file list with sizes and discover quantized variants (GGUF, GPTQ, AWQ). One-click download pre-fills the HF Download tab.
-
-<img src="misc/hf_browser_01.png" alt="HuggingFace Browser — search results" width="900">
-
-<img src="misc/hf_browser_02.png" alt="HuggingFace Browser — expanded model with file list and variants" width="900">
+Tokens are displayed once at creation and should be stored in a secrets manager.
 
 ---
 
-## HuggingFace Download
+## Audit log
 
-Stream any model from HuggingFace Hub to your local cache with real-time progress and resume support. Downloads to the default HF cache by default. To download to a custom directory, register it first under **Inventory → Scan Directories**.
+Administrative and mutating actions are recorded in the application audit log, including events such as:
 
-<img src="misc/hf_download.png" alt="HuggingFace Download tab" width="900">
+- bootstrap
+- user changes
+- API-token changes
+- model download/delete
+- Compose save/archive
+- LiteLLM route changes
+- settings changes
 
 ---
 
 ## Settings
 
-Centralized configuration for all 7 service URLs and API key management. One-click connectivity testing for every service.
+Settings exposes:
 
-<img src="misc/settings.png" alt="Settings tab" width="900">
+- application behavior
+- default Compose parameters
+- service endpoints
+- engine images
+- security summary
+
+Service endpoint tests provide both:
+
+- a toast notification; and
+- a persistent inline success/failure indicator with latency or HTTP/error status.
+
+Canonical service names are used throughout the UI:
+
+- Ollama
+- LiteLLM
+- SGLang
+- vLLM
+- llama.cpp
+- LocalAI
+- ComfyUI
+
+Saving unchanged settings is safe and does not automatically restart serving engines.
+
+---
+
+## Security model: treat the LAN as untrusted
+
+DGX Model Manager does not treat local-network access as authorization.
+
+Important controls include:
+
+### Authentication
+
+Read-only operational data is authenticated.
+
+Anonymous LAN users cannot retrieve inventory, service topology, routes, logs, or host diagnostics.
+
+### HTTPS
+
+Non-loopback deployment is HTTPS-first.
+
+The installer can generate a bootstrap self-signed certificate; replace it with a trusted certificate when appropriate.
+
+### CSRF
+
+Browser mutations require CSRF protection in addition to authentication.
+
+### SSRF policy
+
+Configured service targets are restricted to safe local/private destinations by default.
+
+Public, multicast, unspecified, and unsafe link-local targets are blocked unless policy is explicitly changed.
+
+### Docker authority
+
+The web application never exposes the Docker socket over the network.
+
+Local Docker access remains powerful and must be protected by the host operating system.
+
+### Compose trust boundary
+
+The generator does not accept arbitrary user-edited YAML through its normal save API.
+
+### Secrets
+
+Runtime credentials, TLS private keys, local configuration, databases, environment files, and generated tokens are excluded from the public repository and release archives.
+
+---
+
+## Legacy Script Mode
+
+Legacy `start_*.sh` workflows remain available as an opt-in compatibility feature.
+
+Legacy Script Mode is disabled by default.
+
+When enabled, matching scripts can appear as serving profiles while operators transition to Compose-managed deployments.
+
+Legacy scripts are arbitrary executable code. Enable this mode only for scripts you trust.
+
+---
+
+## Multi-node DGX Spark
+
+The host running the web application is the local node and requires no agent.
+
+Additional DGX Spark systems can run the restricted node agent:
+
+```bash
+bash setup-agent.sh
+```
+
+The agent supports:
+
+- node information
+- dashboard metrics
+- model inventory
+- Compose generation
+- managed deployment lifecycle
+
+It does not expose a general-purpose remote shell.
+
+For self-signed agent TLS, certificate fingerprint pinning is required when normal CA verification is disabled.
+
+### Validation status
+
+The local-node cluster path was hardware-tested during the 2.0.0 acceptance run.
+
+Remote-node enrollment and lifecycle paths are implemented and covered by software tests, but were **not hardware-validated against a second physical DGX Spark before the 2.0.0 publication**.
+
+Feedback from multi-Spark operators is therefore particularly useful.
+
+---
+
+## Diagnostics
+
+Logs & Diagnostics includes:
+
+- host information
+- Python/runtime information
+- Docker and Compose readiness
+- application uptime
+- in-memory application logs
+- LiteLLM journal output
+- Docker container discovery
+
+Container discovery is observational and does not imply ownership.
+
+---
+
+## Configuration
+
+The public repository contains:
+
+```text
+config.example.json
+```
+
+Runtime configuration is created locally as:
+
+```text
+~/.config/dgx-model-manager-v2/config.json
+```
+
+Runtime configuration is deliberately excluded from Git and release archives.
+
+Do not commit real credentials, certificates, local databases, or host-specific runtime state.
+
+---
+
+## Example service configuration
+
+See:
+
+```text
+config.example.json
+```
+
+for defaults.
+
+Typical service endpoints use loopback addresses:
+
+```json
+{
+  "services": {
+    "ollama_base": "http://127.0.0.1:11434",
+    "litellm_base": "http://127.0.0.1:4000",
+    "vllm_base": "http://127.0.0.1:8000",
+    "comfyui_base": "http://127.0.0.1:8188"
+  }
+}
+```
+
+---
+
+## Migration from v1
+
+The migration helper can inspect an existing installation and import compatible settings:
+
+```bash
+python3 scripts/migrate_from_v1.py --help
+```
+
+Migration can preserve compatible service URLs, inventory paths, and optional legacy-script visibility.
+
+The source installation is not overwritten by the migration helper.
+
+---
+
+## Promotion
+
+After side-by-side validation, use:
+
+```bash
+python3 scripts/promote_v2.sh --help
+```
+
+Review the dry-run output before replacing an existing production service.
+
+Promotion should be treated as a separate operational decision from installing or testing v2.
+
+---
+
+## Build release archives
+
+Run:
+
+```bash
+bash scripts/build_release.sh
+```
+
+The release builder:
+
+1. performs offline release validation;
+2. stages only publishable material;
+3. excludes runtime state, secrets, maintainer-only acceptance files, and stale archives;
+4. creates a per-file `MANIFEST.sha256` inside the archive;
+5. creates `.tar.gz` and `.zip` release packages;
+6. creates SHA-256 checksum files for both packages.
+
+Output is written to:
+
+```text
+dist/
+```
+
+---
+
+## Development validation
+
+Install development requirements:
+
+```bash
+python3 -m pip install -r requirements-dev.txt
+```
+
+Run the test suite:
+
+```bash
+pytest -q
+```
+
+Run release validation:
+
+```bash
+python3 scripts/validate_release.py
+```
+
+Validate shell syntax:
+
+```bash
+bash -n setup.sh
+bash -n setup-agent.sh
+bash -n scripts/build_release.sh
+```
+
+---
+
+## 2.0.0 hardware acceptance summary
+
+The release was exercised side-by-side with existing model-serving workloads on a DGX Spark.
+
+Validated live:
+
+- installer/bootstrap
+- HTTPS/authentication
+- dashboard metrics
+- authenticated LiteLLM health
+- model inventory
+- Hugging Face metadata enrichment
+- Hugging Face search and file sizes
+- Hugging Face download/delete
+- Ollama empty-state discovery
+- Compose generation
+- collision-aware port allocation
+- Compose save without launch
+- Compose config validation
+- stopped-state discovery
+- deployment logs
+- deployment archive
+- LiteLLM route discovery/config display
+- serving-engine discovery
+- external-service ownership protection
+- local-node cluster display
+- diagnostics
+- users/access safeguards
+- settings endpoint testing
+- settings persistence
+- documentation UI
+
+Deferred during the live acceptance session to avoid disrupting an active inference workload:
+
+- launching/stopping a new v2-managed GPU-serving deployment
+- mutating/restarting LiteLLM routes during active use
+- second-physical-node hardware validation
+
+These are explicit validation gaps, not claims of completed hardware testing.
+
+---
+
+## Repository structure
+
+```text
+.
+├── app.py
+├── agent.py
+├── config.example.json
+├── engine_catalog.yaml
+├── dgx_manager/
+├── docs/
+├── docs.html
+├── misc/screenshots/
+├── scripts/
+├── static/
+├── templates/
+├── tests/
+├── tools/
+├── setup.sh
+└── setup-agent.sh
+```
+
+Runtime configuration, local databases, TLS material, acceptance plans, and generated release packages are intentionally excluded by `.gitignore`.
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+When changing engine behavior, security boundaries, model metadata logic, or Compose generation, include regression tests and update the relevant documentation.
 
 ---
 
 ## Security
 
-API key authentication is **optional** and can be enabled from the Settings tab.
+See [SECURITY.md](SECURITY.md).
 
-- When set, all mutating operations and sensitive read endpoints require the key via `Authorization: Bearer <key>`
-- Basic status, inventory, and profile endpoints remain accessible without auth
-- The key is stored in `config.json` as a SHA-256 hash — the plaintext is never written to disk
-- Verification uses constant-time `hmac.compare_digest()` to prevent timing attacks
-- Legacy plaintext keys from older versions are auto-upgraded to hashes on first load
-- If the app starts bound to a non-loopback address with no key set, it emits a warning to the systemd journal and waits 10 seconds before accepting connections. Set `MODEL_MANAGER_ALLOW_UNAUTH=1` to suppress this.
-
----
-
-## Logs & Diagnostics
-
-Full-stack visibility into your AI infrastructure — system overview, running configuration, color-coded application logs, per-engine log files, LiteLLM journalctl, and live Docker container state.
-
-| Section | What It Shows |
-|---------|--------------|
-| System Overview | Hostname, IP, architecture, memory, Python version, uptime, disk usage, service health with latency |
-| Running Config | App configuration, LiteLLM YAML, all engine profiles |
-| Application Logs | Color-coded ring buffer (500 entries) with level/search filters and auto-refresh |
-| Engine Logs | Latest log files from `/tmp/` for each engine |
-| LiteLLM Logs | journalctl output for the LiteLLM service |
-| Docker Containers | Live container state table |
-
-Application logs are in-memory only (no disk writes). The buffer clears on app restart.
-
-<img src="misc/logging.png" alt="Logs & Debug tab" width="900">
-
----
-
-## Built-in Documentation
-
-Full user manual served at `/help` covering every feature, the profile system, security setup, and troubleshooting.
-
-<img src="misc/docs.png" alt="Documentation page" width="900">
-
----
-
-## Running Without systemd
-
-```bash
-# Activate the venv and run directly
-source venv/bin/activate
-python3 app.py
-
-# Or with uvicorn for hot reload
-venv/bin/uvicorn app:app --host 0.0.0.0 --port 8090 --reload
-```
-
----
-
-## Service Management
-
-```bash
-# Status
-sudo systemctl status model-manager
-
-# Restart
-sudo systemctl restart model-manager
-
-# Logs
-sudo journalctl -u model-manager -f
-
-# Disable autostart
-sudo systemctl disable model-manager
-```
-
----
-
-## Project Structure
-
-```
-DGX-Model-Manager/
-  app.py              # The entire application (~4,500 lines)
-  config.example.json # Default config — copy to config.json
-  config.json         # Your runtime config (gitignored)
-  requirements.txt    # Python dependencies
-  setup.sh            # Interactive setup script
-  docs.html           # Built-in documentation (served at /help)
-  favicon.png         # App icon
-  misc/               # Screenshots
-  CHANGELOG.md        # Release history
-  .gitignore          # Excludes config.json, venv/, runtime data
-```
-
-The app is a **single Python file** by design. All HTML, CSS, and JavaScript are inline. Config is resolved relative to `app.py`'s directory, so it works no matter where you clone the repo.
-
----
-
-## API Reference
-
-All endpoints are under `/api/`. Basic status and inventory endpoints are unauthenticated. Mutating and diagnostic endpoints require the API key when auth is enabled.
-
-<details>
-<summary>Click to expand endpoint list</summary>
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/status` | No | Aggregated health for all services |
-| GET | `/api/nodeinfo` | No | Hostname, IP, ports, service URLs |
-| GET | `/api/config` | No | Current configuration |
-| PUT | `/api/config` | Yes | Update configuration |
-| GET | `/api/ollama/models` | No | List installed Ollama models |
-| POST | `/api/ollama/pull` | Yes | Pull an Ollama model (streaming) |
-| DELETE | `/api/ollama/models/{name}` | Yes | Delete an Ollama model |
-| GET | `/api/litellm/models` | No | Active LiteLLM routes |
-| GET | `/api/litellm/config` | Yes | LiteLLM config file |
-| POST | `/api/litellm/apply-wildcard` | Yes | Apply wildcard routing |
-| POST | `/api/litellm/restart` | Yes | Restart LiteLLM service |
-| GET | `/api/{engine}/profiles` | No | List engine profiles |
-| GET | `/api/{engine}/status` | No | Engine health + running model |
-| POST | `/api/{engine}/start` | Yes | Start engine with profile |
-| POST | `/api/{engine}/stop` | Yes | Stop engine container |
-| GET | `/api/inventory` | No | Unified model inventory |
-| GET | `/api/hf/search` | No | Search HuggingFace Hub |
-| POST | `/api/hf/download` | Yes | Download from HF Hub (streaming) |
-| GET | `/api/hf/inventory/dirs` | No | List custom scan directories |
-| POST | `/api/hf/inventory/dirs` | Yes | Add a custom directory |
-| DELETE | `/api/hf/inventory/dirs` | Yes | Remove a custom directory |
-| POST | `/api/hf/inventory/delete` | Yes | Delete a model from disk |
-| GET | `/api/debug/system` | Yes | System diagnostics |
-| GET | `/api/debug/config` | Yes | Running configuration |
-| GET | `/api/debug/docker` | Yes | Docker container state |
-| GET | `/api/logs/app` | Yes | Application log buffer |
-| DELETE | `/api/logs/app` | Yes | Clear log buffer |
-| GET | `/api/logs/engine/{engine}` | Yes | Engine log files |
-| GET | `/api/logs/litellm` | Yes | LiteLLM journalctl output |
-
-`{engine}` is one of: `sglang`, `vllm`, `llamacpp`, `localai`, `comfyui`
-
-</details>
+Do not open a public issue containing credentials, private keys, access tokens, or sensitive host information.
 
 ---
 
 ## License
 
-MIT
+See [LICENSE](LICENSE).
+
+---
+
+## Related documentation
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Compose Builder](docs/COMPOSE_BUILDER.md)
+- [Upgrade / side-by-side procedure](docs/UPGRADE.md)
+- [Release notes](RELEASE_NOTES.md)
+- [Changelog](CHANGELOG.md)

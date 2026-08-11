@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>DGX Model Manager v2</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/static/app.css?v={{ version }}">
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="sigil">D</div>
+      <div class="brand-copy"><div class="brand-name">Model Manager</div><div class="brand-sub" id="brand-node">DGX Spark control plane</div></div>
+      <span class="version-badge">v{{ version }}</span>
+    </div>
+    <div class="top-spacer"></div>
+    <div class="cluster-chip"><span class="live-dot"></span><span id="cluster-summary">Local node</span></div>
+    <select class="node-select" id="top-node-select" aria-label="Selected node"><option value="local">Local node</option></select>
+    <button class="user-chip" id="user-menu-btn" type="button"><span class="avatar" id="user-avatar">?</span><span class="user-name" id="user-name">Sign in</span></button>
+  </header>
+
+  <aside class="sidebar">
+    <div class="nav-group">
+      <div class="nav-label">Overview</div>
+      <button class="nav-item active" data-page="dashboard"><span class="nav-icon">⌂</span><span>Dashboard</span></button>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Models</div>
+      <button class="nav-item" data-page="inventory"><span class="nav-icon">▦</span><span>Inventory</span><span class="nav-badge" id="nav-model-count">—</span></button>
+      <button class="nav-item" data-page="ollama"><span class="nav-icon">◉</span><span>Ollama</span></button>
+      <button class="nav-item" data-page="hf"><span class="nav-icon">◎</span><span>HF Browser</span></button>
+      <button class="nav-item" data-page="downloads"><span class="nav-icon">⇩</span><span>Downloads</span></button>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Serving</div>
+      <button class="nav-item" data-page="deployments"><span class="nav-icon">▤</span><span>Deployments</span><span class="nav-badge" id="nav-deploy-count">—</span></button>
+      <button class="nav-item" data-page="builder"><span class="nav-icon">◇</span><span>Compose Builder</span></button>
+      <button class="nav-item" data-page="routing"><span class="nav-icon">⇄</span><span>LiteLLM Routes</span></button>
+      <button class="nav-item" data-page="engines"><span class="nav-icon">⚡</span><span>Engines</span></button>
+      <button class="nav-item hidden" id="legacy-nav" data-page="legacy"><span class="nav-icon">#!</span><span>Legacy Scripts</span></button>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">System</div>
+      <button class="nav-item" data-page="cluster"><span class="nav-icon">◫</span><span>Cluster</span><span class="nav-badge" id="nav-node-count">1</span></button>
+      <button class="nav-item" data-page="logs"><span class="nav-icon">≡</span><span>Logs & Diagnostics</span></button>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Administration</div>
+      <button class="nav-item role-admin-only" data-page="access"><span class="nav-icon">◇</span><span>Users & Access</span></button>
+      <button class="nav-item role-admin-only" data-page="settings"><span class="nav-icon">⚙</span><span>Settings</span></button>
+      <button class="nav-item" data-page="docs"><span class="nav-icon">?</span><span>Documentation</span></button>
+    </div>
+    <div class="sidebar-footer">DGX MODEL MANAGER<br>COMPOSE-FIRST CONTROL PLANE</div>
+  </aside>
+
+  <main class="main">
+    <section class="page active" id="page-dashboard">
+      <div class="page-head"><div class="page-head-copy"><div class="eyebrow">Overview</div><h1>Infrastructure dashboard</h1><div class="page-desc">Operational state for the selected DGX node, model inventory, inference services, and managed Compose deployments.</div></div><div class="actions"><button class="btn" data-action="refresh-dashboard">↻ Refresh</button></div></div>
+      <div class="grid cols-4" id="dashboard-metrics"></div>
+      <div class="grid cols-2 section-gap">
+        <div class="panel"><div class="panel-head"><div class="panel-title">Service health</div><div class="panel-sub">authenticated control-plane view</div></div><div class="panel-body"><div class="service-list" id="dashboard-services"></div></div></div>
+        <div class="panel"><div class="panel-head"><div class="panel-title">Managed deployments</div><div class="panel-sub">Compose stacks</div><div class="actions"><button class="btn small" data-go="deployments">Open all</button></div></div><div class="panel-body"><div class="stack-list" id="dashboard-deployments"></div></div></div>
+      </div>
+      <div class="panel section-gap"><div class="panel-head"><div class="panel-title">Platform summary</div><div class="panel-sub" id="platform-summary">Detecting host...</div></div><div class="panel-body"><div class="grid cols-3" id="platform-cards"></div></div></div>
+    </section>
+
+    <section class="page" id="page-inventory">
+      <div class="page-head"><div class="page-head-copy"><div class="eyebrow">Models</div><h1>Model inventory</h1><div class="page-desc">Existing HuggingFace cache and Ollama paths are retained. Custom directories can be added without moving model data.</div></div><div class="actions"><button class="btn" data-action="inventory-refresh">↻ Refresh</button></div></div>
+      <div class="toolbar"><input class="input" id="inv-search" placeholder="Search models"><select class="select" id="inv-source"><option value="">All sources</option><option value="hf_cache">HF Cache</option><option value="custom_dir">Custom</option><option value="ollama">Ollama</option></select><select class="select" id="inv-format"><option value="">All formats</option><option>safetensors</option><option>gguf</option><option>pytorch</option><option>ollama</option></select><select class="select" id="inv-task"><option value="">All tasks</option><option>Text Gen</option><option>Vision LLM</option><option>Embedding</option><option>Audio</option><option>STT</option><option>TTS</option></select></div>
+      <div class="panel"><div class="panel-head"><div class="panel-title" id="inventory-summary">Inventory</div><div class="actions"><button class="btn small" data-action="open-dir-dialog">Add directory</button></div></div><div class="table-wrap"><table class="table" id="inventory-table"><thead><tr><th>Model</th><th>Task</th><th>Format</th><th>Dtype</th><th>Params</th><th>Size</th><th>Source</th><th>Action</th></tr></thead><tbody></tbody></table></div></div>
+      <div class="panel section-gap"><div class="panel-head"><div class="panel-title">Scan directories</div></div><div class="panel-body" id="inventory-dirs"></div></div>
+    </section>
+
+    <section class="page" id="page-ollama">
+      <div class="page-head"><div class="page-head-copy"><div class="eyebrow">Models</div><h1>Ollama</h1><div class="page-desc">Pull, inspect, and remove Ollama models. The existing Ollama service and storage remain untouched by the v2 application install.</div></div><div class="actions"><button class="btn" data-action="ollama-refresh">↻ Refresh</button></div></div>
+      <div class="panel"><div class="panel-head"><div class="panel-title">Pull model</div></div><div class="panel-body"><div class="toolbar"><input class="input" id="ollama-pull-name" placeholder="Model name — e.g. qwen3:8b"><button class="btn primary" data-action="ollama-pull">⇩ Pull</button></div><div class="progress"><span id="ollama-progress-bar"></span></div><div class="download-log mt12" id="ollama-progress-log">Ready.</div></div></div>
+      <div class="grid cols-2 section-gap" id="ollama-models"></div>
+    </section>
+
+    <section class="page" id="page-hf">
+      <div class="page-head"><div class="page-head-copy"><div class="eyebrow">Models</div><h1>Browse HuggingFace</h1><div class="page-desc">Search Hub metadata, inspect repository files, discover common quantized variants, then hand the result to Download or Compose Builder.</div></div></div>
+      <div class="panel"><div class="panel-body"><div class="toolbar"><input class="input" id="hf-query" placeholder="Search HuggingFace Hub"><select class="select" id="hf-type"><option value="">All types</option><option value="text-generation">Text generation</option><option value="image-text-to-text">Vision</option><option value="feature-extraction">Embeddings</option><option value="automatic-speech-recognition">Speech recognition</option></select><select class="select" id="hf-sort"><option value="downloads">Most downloads</option><option value="likes">Most likes</option><option value="trendingScore">Trending</option><option value="lastModified">Recent</option></select><button class="btn primary" data-action="hf-search">Search</button></div></div></div>
+      <div class="panel section-gap" id="hf-results"><div class="empty-state">Search HuggingFace to begin.</div></div>
+    </section>
+
+    <section class="page" id="page-downloads">
+      <div class="page-head"><div class="page-head-copy"><div class="eyebrow">Models</div><h1>HuggingFace downloads</h1><div class="page-desc">Downloads default to <span class="mono">~/.cache/huggingface/hub</span>, matching the current application and standard HuggingFace cache layout.</div></div></div>
+      <div class="panel"><div class="panel-body"><div class="form-grid"><div class="form-group"><label class="label" for="download-repo">Repository ID</label><input class="input w100" id="download-repo" placeholder="owner/model"></div><div class="form-group"><label class="label" for="download-dir">Local directory (optional)</label><input class="input w100" id="download-dir" placeholder="Leave blank for HF cache"></div></div><div class="form-actions"><button class="btn primary" data-action="hf-download">⇩ Download</button></div><div class="progress mt12"><span id="download-progress-bar"></span></div><div class="download-log mt12" id="download-log">Ready.</div></div></div>
+    </section>
+
+    <section class="page" id="page-deployments">
+      <div class="page-head"><div class="page-head-copy"><div class="eyebrow">Serving</div><h1>Compose deployments</h1><div class="page-desc">Declarative model-serving stacks managed with Docker Compose. Existing shell scripts remain available only when Legacy Script Mode is enabled.</div></div><div class="actions"><button class="btn primary" data-go="builder">＋ New deployment</button><button class="btn" data-action="deployments-refresh">↻ Refresh</button></div></div>
+      <div class="panel"><div class="table-wrap"><table class="table" id="deployment-table"><thead><tr><th>Deployment</th><th>Engine</th><th>Model</th><th>Node</th><th>Fit</th><th>Port</th><th>Status</th><th>Actions</th></tr></thead><tbody></tbody></table></div></div>
+    </section>
+
+    <section class="page" id="page-builder">
+      <div class="page-head"><div class="page-head-copy"><div class="eyebrow">Serving</div><h1>Compose Builder</h1><div class="page-desc">Generate a DGX-aware Compose stack from model metadata and target-node capacity. The planner uses the existing model path rather than copying the checkpoint.</div></div></div>
+      <div class="builder">
+        <div class="panel"><div class="panel-head"><div class="panel-title">Deployment inputs</div></div><div class="builder-form">
+          <div class="stack">
+            <div><label class="label" for="build-model">Model</label><select class="select w100" id="build-model"></select></div>
+            <div class="form-grid"><div><label class="label" for="build-engine">Engine</label><select class="select w100" id="build-engine"><option value="vllm">vLLM</option><option value="sglang">SGLang</option><option value="llamacpp">llama.cpp</option><option value="localai">LocalAI</option><option value="comfyui">ComfyUI</option></select></div><div><label class="label" for="build-node">Target node</label><select class="select w100" id="build-node"><option value="">Local node</option></select></div></div>
+            <div><label class="label" for="build-name">Deployment name</label><input class="input w100" id="build-name" placeholder="Optional friendly name"></div>
+            <div class="form-grid"><div><label class="label" for="build-context">Context length</label><input class="input w100" id="build-context" type="number" value="32768" min="1024"></div><div><label class="label" for="build-reserve">System reserve (GB)</label><input class="input w100" id="build-reserve" type="number" value="24" min="4" step="1"></div></div>
+            <div class="form-grid"><div><label class="label" for="build-profile">Optimization profile</label><select class="select w100" id="build-profile"><option value="conservative">Conservative</option><option value="balanced" selected>Balanced</option><option value="performance">Performance</option></select></div><div><label class="label" for="build-bind">Bind address</label><select class="select w100" id="build-bind"><option value="127.0.0.1">Loopback — recommended</option><option value="0.0.0.0">LAN — advanced</option></select></div></div>
+            <label class="toggle-row"><div class="toggle-copy"><div class="toggle-title">Prepare for LiteLLM routing</div><div class="toggle-sub">Records routing intent in deployment metadata.</div></div><input type="checkbox" class="checkbox" id="build-litellm" checked></label>
+            <button class="btn primary w100" data-action="generate-compose">Generate Compose</button>
+          </div>
+          <div class="signal-list" id="builder-signals"></div><div class="decision" id="builder-decision">Select a model and generate a deployment plan.</div>
+        </div></div>
+        <div class="panel"><div class="panel-head"><div class="panel-title">Generated compose.yaml</div><div class="actions"><button class="btn small" data-action="copy-yaml">Copy</button><button class="btn primary small" id="save-plan-btn" data-action="save-plan" disabled>Save deployment</button></div></div><pre class="code-pane" id="yaml-code"># Generate a deployment to preview YAML.</pre></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-routing">
+      <div class="page-head"><div class="page-head-copy"><div class="eyebrow">Serving</div><h1>LiteLLM routing</h1><div class="page-desc">Unified OpenAI-compatible routing is retained. Secrets in the LiteLLM configuration are redacted before they reach the browser.</div></div><div class="actions"><button class="btn" data-action="routing-refresh">↻ Refresh</button><button class="btn primary" data-action="apply-wildcard">Apply Ollama wildcard</button></div></div>
+      <div class="grid cols-2"><div class="panel"><div class="panel-head"><div class="panel-title">Active routes</div></div><div class="panel-body" id="route-list"></div></div><div class="panel"><div class="panel-head"><div class="panel-title">Redacted configuration</div></div><div class="panel-body"><pre class="code-pane small" id="litellm-config">Loading...</pre></div></div></div>
+    </section>
+
+    <section class="page" id="page-engines">
+      <div class="page-head"><div class="page-head-copy"><div class="eyebrow">Serving</div><h1>Inference engines</h1><div class="page-desc">One control surface for vLLM, SGLang, llama.cpp, LocalAI, and ComfyUI. Compose deployments are the primary launch mechanism.</div></div><div class="actions"><button class="btn" data-action="engines-refresh">↻ Refresh</button></div></div>
+      <div class="engine-grid" id="engine-grid"></div>
+    </section>
+
+    <section class="page" id="page-legacy">
+      <div class="page-head"><div class="page-head-copy"><div class="eyebrow">Compatibility</div><h1>Legacy scripts</h1><div class="page-desc">Compatibility view for existing <span class="mono">start_*.sh</span> profiles. Legacy Script Mode is disabled by default and never removes existing files.</div></div></div>
+      <div class="callout amber">Legacy scripts execute arbitrary shell commands with the permissions of the Model Manager service account. Keep this mode disabled unless you need migration compatibility.</div>
+      <div class="engine-grid section-gap" id="legacy-grid"></div>
+    </section>
+
+    <section class="page" id="page-cluster">
+      <div class="page-head"><div class="page-head-copy"><div class="eyebrow">System</div><h1>Cluster</h1><div class="page-desc">The local Spark works without an agent. Additional DGX Spark nodes can enroll through the optional authenticated node agent.</div></div><div class="actions role-admin-only"><button class="btn primary" data-action="node-add">＋ Add node</button><button class="btn" data-action="cluster-refresh">↻ Refresh</button></div></div>
+      <div class="grid cols-3" id="cluster-metrics"></div>
+      <div class="panel section-gap"><div class="panel-head"><div class="panel-title">Nodes</div></div><div class="panel-body"><div class="node-list" id="node-list"></div></div></div>
+    </section>
+
+    <section class="page" id="page-logs">
+      <div class="page-head"><div class="page-head-copy"><div class="eyebrow">System</div><h1>Logs & diagnostics</h1><div class="page-desc">Authenticated application, engine, LiteLLM, Docker, and host diagnostics. Sensitive configuration values are not returned to the browser.</div></div><div class="actions"><button class="btn" data-action="logs-refresh">↻ Refresh</button></div></div>
+      <div class="grid cols-3" id="diagnostic-cards"></div>
+      <div class="panel section-gap"><div class="panel-head"><div class="panel-title">Application logs</div></div><div class="panel-body"><div class="log-toolbar"><select class="select" id="log-level"><option value="">All levels</option><option>INFO</option><option>WARNING</option><option>ERROR</option></select><input class="input" id="log-search" placeholder="Search logs"><button class="btn small" data-action="logs-refresh">Refresh</button><button class="btn danger small role-admin-only" data-action="logs-clear">Clear</button></div><div class="log-pane" id="app-log-pane"></div></div></div>
+      <div class="grid cols-2 section-gap"><div class="panel"><div class="panel-head"><div class="panel-title">LiteLLM journal</div></div><div class="panel-body"><div class="log-pane" id="litellm-log-pane"></div></div></div><div class="panel"><div class="panel-head"><div class="panel-title">Docker containers</div></div><div class="panel-body" id="docker-pane"></div></div></div>
+    </section>
+
+    <section class="page" id="page-access">
+      <div class="page-head"><div class="page-head-copy"><div class="eyebrow">Administration</div><h1>Users & access</h1><div class="page-desc">Local accounts, role-based access, session authentication, and scoped API tokens. Public self-registration is disabled by default.</div></div><div class="actions"><button class="btn primary" data-action="user-add">＋ Create user</button><button class="btn" data-action="access-refresh">↻ Refresh</button></div></div>
+      <div class="grid cols-2"><div class="panel"><div class="panel-head"><div class="panel-title">Accounts</div></div><div class="panel-body"><div id="user-list"></div></div></div><div class="panel"><div class="panel-head"><div class="panel-title">API tokens</div><div class="actions"><button class="btn small" data-action="token-add">＋ Token</button></div></div><div class="panel-body"><div id="token-list"></div></div></div></div>
+      <div class="panel section-gap"><div class="panel-head"><div class="panel-title">Recent audit events</div></div><div class="panel-body"><div class="activity-list" id="audit-list"></div></div></div>
+    </section>
+
+    <section class="page" id="page-settings">
+      <div class="page-head"><div class="page-head-copy"><div class="eyebrow">Administration</div><h1>Settings</h1><div class="page-desc">Security-sensitive runtime settings and service endpoints. The v2 test install uses its own configuration, database, service name, Compose directory, and port.</div></div><div class="actions"><button class="btn primary" data-action="settings-save">Save settings</button></div></div>
+      <div class="grid cols-2"><div class="panel"><div class="panel-head"><div class="panel-title">Application</div></div><div class="panel-body"><div class="stack"><div><label class="label" for="settings-name">Display name</label><input class="input w100" id="settings-name"></div><label class="toggle-row"><div class="toggle-copy"><div class="toggle-title">Legacy Script Mode</div><div class="toggle-sub">Expose existing start_*.sh profiles without converting them.</div></div><input type="checkbox" class="checkbox" id="settings-legacy"></label><label class="toggle-row"><div class="toggle-copy"><div class="toggle-title">Allow self-registration</div><div class="toggle-sub">New users become Viewers. Recommended off for an untrusted LAN.</div></div><input type="checkbox" class="checkbox" id="settings-registration"></label></div></div></div><div class="panel"><div class="panel-head"><div class="panel-title">Compose defaults</div></div><div class="panel-body"><div class="form-grid"><div><label class="label" for="settings-bind">Default bind</label><select class="select w100" id="settings-bind"><option value="127.0.0.1">127.0.0.1</option><option value="0.0.0.0">0.0.0.0</option></select></div><div><label class="label" for="settings-reserve">System reserve (GB)</label><input class="input w100" type="number" id="settings-reserve"></div></div><div class="form-group mt12"><label class="label" for="settings-context">Default context</label><input class="input w100" type="number" id="settings-context"></div></div></div></div>
+      <div class="panel section-gap"><div class="panel-head"><div class="panel-title">Service endpoints</div><div class="panel-sub">private/loopback targets by default</div></div><div class="panel-body"><div class="form-grid" id="service-settings"></div></div></div>
+      <div class="panel section-gap"><div class="panel-head"><div class="panel-title">Engine images</div></div><div class="panel-body"><div class="form-grid" id="image-settings"></div></div></div>
+      <div class="callout green section-gap" id="security-summary">Loading security posture...</div>
+    </section>
+
+    <section class="page" id="page-docs">
+      <div class="page-head"><div class="page-head-copy"><div class="eyebrow">Reference</div><h1>Documentation</h1><div class="page-desc">The repository includes a complete v2 README, security model, migration procedure, multi-node agent guide, Compose Builder notes, and upgrade/promotion workflow.</div></div><div class="actions"><a class="btn primary" href="/help" target="_blank" rel="noopener">Open field manual ↗</a></div></div>
+      <div class="grid cols-3"><div class="panel"><div class="panel-body"><div class="screen-title">Migration</div><h3>Coexistence first</h3><p class="subtle">v2 defaults to port 8091 and service <span class="mono">model-manager-v2</span>. It can import v1 paths and service URLs without modifying the running v1 application.</p></div></div><div class="panel"><div class="panel-body"><div class="screen-title">Security</div><h3>Untrusted LAN</h3><p class="subtle">Authenticated reads and writes, Argon2id passwords, HttpOnly sessions, CSRF, TLS, RBAC, redaction, and audit events replace the old mutation-only API key model.</p></div></div><div class="panel"><div class="panel-body"><div class="screen-title">Serving</div><h3>Compose-first</h3><p class="subtle">Generated deployments live in the v2 data directory and reference existing model caches. Legacy script files are left in place for rollback.</p></div></div></div>
+    </section>
+  </main>
+</div>
+
+<div class="auth-lock" id="auth-lock">
+  <div class="auth-card"><div class="auth-brand"><div class="sigil">D</div><div><div class="brand-name">DGX Model Manager</div><div class="brand-sub">Secure v2 control plane</div></div></div><div class="auth-body"><div id="auth-message" class="callout amber">Checking authentication...</div><div class="stack mt16" id="login-form"><div><label class="label" for="login-user">Username</label><input class="input w100" id="login-user" autocomplete="username"></div><div><label class="label" for="login-pass">Password</label><input class="input w100" id="login-pass" type="password" autocomplete="current-password"></div><button class="btn primary w100" data-action="login">Sign in</button><button class="btn w100 hidden" id="registration-open" data-action="show-register">Create viewer account</button></div><div class="stack mt16 hidden" id="registration-form"><div><label class="label" for="register-user">Username</label><input class="input w100" id="register-user" autocomplete="username"></div><div><label class="label" for="register-name">Display name</label><input class="input w100" id="register-name"></div><div><label class="label" for="register-pass">Password</label><input class="input w100" id="register-pass" type="password" autocomplete="new-password" placeholder="Minimum 12 characters"></div><button class="btn primary w100" data-action="register">Create viewer account</button><button class="btn w100" data-action="show-login">Back to sign in</button></div><div class="stack mt16 hidden" id="bootstrap-form"><div><label class="label" for="bootstrap-user">Administrator username</label><input class="input w100" id="bootstrap-user" value="admin" autocomplete="username"></div><div><label class="label" for="bootstrap-name">Display name</label><input class="input w100" id="bootstrap-name" value="Administrator"></div><div><label class="label" for="bootstrap-pass">Password</label><input class="input w100" id="bootstrap-pass" type="password" autocomplete="new-password" placeholder="Minimum 12 characters"></div><div><label class="label" for="bootstrap-token">One-time bootstrap token</label><input class="input w100" id="bootstrap-token" type="password" autocomplete="off" placeholder="Shown by setup.sh or stored in bootstrap.token"></div><button class="btn primary w100" data-action="bootstrap">Create administrator</button></div></div><div class="auth-foot">The first account is an administrator and requires the one-time local bootstrap token. Administrators can create additional accounts. Optional self-registration creates Viewer accounts only and is disabled by default.</div></div>
+</div>
+
+<div class="modal-backdrop" id="generic-modal"><div class="modal"><div class="modal-head"><div class="modal-title" id="modal-title">Action</div><button class="modal-close" data-action="modal-close" type="button">×</button></div><div class="modal-body" id="modal-body"></div><div class="modal-foot" id="modal-foot"></div></div></div>
+<div class="toast" id="toast"></div>
+<script src="/static/app.js?v={{ version }}" defer></script>
+</body>
+</html>

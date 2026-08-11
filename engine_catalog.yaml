@@ -1,0 +1,39 @@
+# Engine defaults verified against upstream project documentation during the v2 release build.
+# Users can override images in config.json without modifying application code.
+engines:
+  vllm:
+    name: vLLM
+    port: 8000
+    health_path: /health
+    models_path: /v1/models
+    image: vllm/vllm-openai:cu130-nightly
+    kind: openai
+  sglang:
+    name: SGLang
+    port: 30000
+    health_path: /health
+    models_path: /v1/models
+    image: lmsysorg/sglang:v0.5.12.post1
+    kind: openai
+  llamacpp:
+    name: llama.cpp
+    port: 8080
+    health_path: /health
+    models_path: /v1/models
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda13
+    kind: openai
+  localai:
+    name: LocalAI
+    port: 9090
+    container_port: 8080
+    health_path: /readyz
+    models_path: /v1/models
+    image: localai/localai:latest-nvidia-l4t-arm64-cuda-13
+    kind: openai
+  comfyui:
+    name: ComfyUI
+    port: 8188
+    health_path: /
+    models_path: null
+    image: ""
+    kind: webui

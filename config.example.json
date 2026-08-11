@@ -1,20 +1,63 @@
 {
   "app": {
     "host": "0.0.0.0",
-    "port": 8090,
-    "display_name": "DGX Spark"
+    "port": 8091,
+    "display_name": "DGX Model Manager v2",
+    "session_hours": 12,
+    "allow_registration": false,
+    "legacy_scripts_enabled": false
+  },
+  "security": {
+    "cookie_secure": true,
+    "require_https": true,
+    "allowed_hosts": ["*"],
+    "allow_public_service_targets": false,
+    "max_request_bytes": 2097152
+  },
+  "tls": {
+    "enabled": true,
+    "cert_file": "~/.config/dgx-model-manager-v2/certs/server.crt",
+    "key_file": "~/.config/dgx-model-manager-v2/certs/server.key"
   },
   "services": {
-    "ollama_base":   "http://127.0.0.1:11434",
-    "litellm_base":  "http://127.0.0.1:4000",
-    "sglang_base":   "http://127.0.0.1:30000",
-    "vllm_base":     "http://127.0.0.1:8000",
+    "ollama_base": "http://127.0.0.1:11434",
+    "litellm_base": "http://127.0.0.1:4000",
+    "sglang_base": "http://127.0.0.1:30000",
+    "vllm_base": "http://127.0.0.1:8000",
     "llamacpp_base": "http://127.0.0.1:8080",
-    "localai_base":  "http://127.0.0.1:9090",
-    "comfyui_base":  "http://127.0.0.1:8188"
+    "localai_base": "http://127.0.0.1:9090",
+    "comfyui_base": "http://127.0.0.1:8188"
   },
   "paths": {
     "litellm_config": "~/litellm/litellm_config.yaml",
-    "hf_cache":       "~/.cache/huggingface/hub"
+    "hf_cache": "~/.cache/huggingface/hub",
+    "compose_root": "~/.local/share/dgx-model-manager-v2/compose",
+    "database": "~/.local/share/dgx-model-manager-v2/model-manager.db",
+    "secret_key": "~/.config/dgx-model-manager-v2/secret.key",
+    "audit_log": "~/.local/share/dgx-model-manager-v2/audit.jsonl",
+    "custom_dirs": "~/.config/dgx-model-manager-v2/custom_dirs.json",
+    "bootstrap_token": "~/.config/dgx-model-manager-v2/bootstrap.token",
+    "legacy_sglang_scripts": "~/SGLang",
+    "legacy_vllm_scripts": "~/vLLM",
+    "legacy_llamacpp_scripts": "~/llama.cpp",
+    "legacy_localai_scripts": "~/LocalAI",
+    "legacy_comfyui_scripts": "~/ComfyUI"
+  },
+  "compose": {
+    "bind_host": "127.0.0.1",
+    "default_memory_reserve_gb": 24,
+    "default_context_length": 32768,
+    "default_profile": "balanced",
+    "images": {
+      "vllm": "vllm/vllm-openai:cu130-nightly",
+      "sglang": "lmsysorg/sglang:v0.5.12.post1",
+      "llamacpp": "ghcr.io/ggml-org/llama.cpp:server-cuda13",
+      "localai": "localai/localai:latest-nvidia-l4t-arm64-cuda-13",
+      "comfyui": ""
+    }
+  },
+  "nodes": {
+    "allow_insecure_http": false,
+    "request_timeout_seconds": 15
   }
 }

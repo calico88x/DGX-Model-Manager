@@ -1,9 +1,0 @@
-[
-  {
-    "id": "example-model",
-    "name": "Your Model Name Here",
-    "script": "~/vllm/start_model.sh",
-    "description": "Replace with your model description and VRAM requirements",
-    "vram_gb": 80
-  }
-]

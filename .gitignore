@@ -1,0 +1,72 @@
+# ============================================================================
+# DGX Model Manager v2
+# Local state, secrets, maintainer files, and generated release artifacts
+# ============================================================================
+
+# Runtime configuration / secrets
+config.json
+config.local.json
+config.*.local.json
+.env
+.env.*
+!.env.example
+secret.key
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+*.token
+certs/
+
+# Runtime databases / state
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+runtime/
+logs/
+*.log
+
+# Local metadata/cache state
+hf-metadata-cache.json
+.cache/
+.local/
+
+# Python environments / caches
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# JavaScript / tooling
+node_modules/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*~
+*.swp
+
+# Maintainer-only release / acceptance material
+docs/TEST_PLAN.md
+RELEASE_CHECKLIST.md
+acceptance/
+release-notes-private/
+
+# Generated release artifacts
+dist/
+MANIFEST.sha256
+DGX-Model-Manager-v*.tar.gz
+DGX-Model-Manager-v*.tar.gz.sha256
+DGX-Model-Manager-v*.zip
+DGX-Model-Manager-v*.zip.sha256
