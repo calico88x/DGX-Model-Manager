@@ -45,6 +45,7 @@ a{color:inherit}
 .cluster-chip,.user-chip,.node-select{height:36px;border:1px solid var(--border);background:var(--panel);border-radius:9px;display:flex;align-items:center;gap:8px;padding:0 11px;font-size:12px;color:var(--text2)}
 .cluster-chip .live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 10px rgba(118,185,0,.55)}
 .node-select{outline:none;cursor:pointer;color:var(--text2)}
+.language-select{min-width:108px}
 .user-chip{cursor:pointer;padding-right:7px}
 .avatar{width:24px;height:24px;border-radius:7px;background:var(--panel3);display:grid;place-items:center;font-family:var(--mono);font-size:10px;color:var(--amber);border:1px solid var(--border2)}
 

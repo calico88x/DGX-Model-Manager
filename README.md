@@ -19,6 +19,14 @@ The manager controls model-serving infrastructure. It does **not** proxy inferen
 
 Version: **2.0.0**
 
+## Languages
+
+The web UI keeps English as the source language and includes an additive
+Simplified Chinese (`简体中文`) option in the top bar. The selected language is
+stored in the browser; switching back to English restores the original labels.
+Translations live in `static/i18n.js` and do not change the API, authentication,
+or deployment behavior.
+
 ---
 
 ## Screenshots
