@@ -35,7 +35,7 @@ function fmtGB(v) {
 function fmtNum(v) { return Number(v || 0).toLocaleString(); }
 function fmtBytes(v) { if (v == null) return '—'; const n=Number(v); if(n>=1e9)return `${(n/1e9).toFixed(1)} GB`; if(n>=1e6)return `${(n/1e6).toFixed(1)} MB`; if(n>=1e3)return `${(n/1e3).toFixed(1)} KB`; return `${n} B`; }
 function cap(s){ return String(s||'').replace(/(^|[-_ ])\w/g,m=>m.toUpperCase()); }
-function toast(msg, kind='') { const el=document.getElementById('toast'); el.textContent=msg; el.style.borderLeftColor=kind==='error'?'var(--red)':kind==='ok'?'var(--green2)':'var(--amber)'; el.classList.add('show'); clearTimeout(window.__toast); window.__toast=setTimeout(()=>el.classList.remove('show'),2600); }
+function toast(msg, kind='') { const el=document.getElementById('toast'); el.textContent=window.dmmI18n?.t(msg)||msg; el.style.borderLeftColor=kind==='error'?'var(--red)':kind==='ok'?'var(--green2)':'var(--amber)'; el.classList.add('show'); clearTimeout(window.__toast); window.__toast=setTimeout(()=>el.classList.remove('show'),2600); }
 
 async function api(path, options={}) {
   const opts = {...options}; opts.headers = {...(opts.headers||{})};
@@ -49,7 +49,7 @@ async function api(path, options={}) {
   if (!r.ok) throw new Error(data?.detail || data?.error || data || `HTTP ${r.status}`);
   return data;
 }
-function modal(title, bodyHtml, footerHtml='') { document.getElementById('modal-title').textContent=title; document.getElementById('modal-body').innerHTML=bodyHtml; document.getElementById('modal-foot').innerHTML=footerHtml; document.getElementById('generic-modal').classList.add('show'); }
+function modal(title, bodyHtml, footerHtml='') { document.getElementById('modal-title').textContent=window.dmmI18n?.t(title)||title; document.getElementById('modal-body').innerHTML=bodyHtml; document.getElementById('modal-foot').innerHTML=footerHtml; document.getElementById('generic-modal').classList.add('show'); }
 function closeModal(){
   const el=document.getElementById('generic-modal');
   el.classList.remove('show','log-viewer');
