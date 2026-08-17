@@ -47,6 +47,19 @@
     out = out.replace(/^last seen (.+)$/, '最后发现于 $1');
     out = out.replace(/^Target-node service$/, '目标节点服务');
     out = out.replace(/^Compose (.+)$/, 'Compose $1');
+    out = out.replace(/^Saved (.+)$/, '已保存 $1');
+    out = out.replace(/^Starting (.+)\.\.\.$/, '正在启动 $1…');
+    out = out.replace(/^ERROR: (.+)$/, '错误：$1');
+    out = out.replace(/^Complete → (.+)$/, '完成 → $1');
+    out = out.replace(/^Loading target-node inventory…$/, '正在加载目标节点模型清单…');
+    out = out.replace(/^Select a model and generate a deployment plan\.$/, '请选择模型并生成部署计划。');
+    out = out.replace(/^Generator decision:$/, '生成器决策：');
+    out = out.replace(/^Estimated runtime$/, '预计运行内存');
+    out = out.replace(/^Memory budget$/, '内存预算');
+    out = out.replace(/^Port exposure$/, '端口暴露');
+    out = out.replace(/^Quantization$/, '量化方式');
+    out = out.replace(/^Fit$/, '适配度');
+    out = out.replace(/^([\d.]+) ms$/, '$1 毫秒');
     return out;
   }
   const dictionary = value => {
