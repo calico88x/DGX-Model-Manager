@@ -19,7 +19,7 @@
   Object.assign(zh, {
     'DGX Model Manager v2':'DGX Model Manager v2','Model Manager':'模型管理器','DGX Spark control plane':'DGX Spark 控制平面','COMPOSE-FIRST CONTROL PLANE':'以 Compose 为核心的控制平面',
     'authenticated control-plane view':'已认证的控制平面视图','Service health':'服务健康状态','Compose stacks':'Compose 堆栈','Open all':'查看全部','Platform summary':'平台摘要','Detecting host...':'正在检测主机…','Operational state for the selected DGX node, model inventory, inference services, and managed Compose deployments.':'所选 DGX 节点的运行状态、模型清单、推理服务和受管 Compose 部署。',
-    'Existing HuggingFace cache and Ollama paths are retained. Custom directories can be added without moving model data.':'现有 HuggingFace 缓存和 Ollama 路径保持不变。添加自定义目录不会移动模型文件。','All sources':'全部来源','HF Cache':'HF 缓存','Custom':'自定义','All formats':'全部格式','safetensors':'safetensors','gguf':'GGUF','pytorch':'PyTorch','ollama':'Ollama','All tasks':'全部任务','Text Gen':'文本生成','Vision LLM':'视觉语言模型','Embedding':'嵌入','Audio':'音频','STT':'语音转文字','TTS':'文字转语音','Inventory':'模型清单','Add directory':'添加目录','Model':'模型','Task':'任务','Format':'格式','Dtype':'数据类型','Params':'参数量','Size':'大小','Source':'来源','Action':'操作','Scan directories':'扫描目录','No models match the filters.':'没有模型符合当前筛选条件。','Unknown':'未知','Open':'打开','Serve':'启动服务','Delete':'删除','Default HuggingFace cache':'默认 HuggingFace 缓存','Custom scan directory':'自定义扫描目录',
+    'Existing HuggingFace cache and Ollama paths are retained. Custom directories can be added without moving model data.':'现有 HuggingFace 缓存和 Ollama 路径保持不变。添加自定义目录不会移动模型文件。','All sources':'全部来源','HF Cache':'HF 缓存','Custom':'自定义','All formats':'全部格式','safetensors':'safetensors','gguf':'GGUF','pytorch':'PyTorch','ollama':'Ollama','All tasks':'全部任务','Text Gen':'文本生成','Vision LLM':'视觉语言模型','Embedding':'嵌入','Audio':'音频','STT':'语音转文字','TTS':'文字转语音','Inventory':'模型清单','Add directory':'添加目录','Model':'模型','Task':'任务','Format':'格式','Dtype':'数据类型','Params':'参数量','Size':'大小','Source':'来源','Action':'操作','Scan directories':'扫描目录','No models match the filters.':'没有模型符合当前筛选条件。','Unknown':'未知','Open':'打开','Serve':'启动服务','Delete':'删除','Default HuggingFace cache':'默认 HuggingFace 缓存','Custom scan directory':'自定义扫描目录','Directory path':'目录路径','The directory must already exist on the Model Manager host. System root directories are blocked.':'目录必须已存在于 Model Manager 主机上，系统根目录不允许添加。','Add model directory':'添加模型目录','Directory added':'目录已添加','Directory removed':'目录已移除','Remove from inventory scanning? No files will be deleted.':'从模型扫描中移除？不会删除任何文件。','Delete from disk?':'从磁盘删除？','This cannot be undone.':'此操作无法撤销。',
     'Pull, inspect, and remove Ollama models. The existing Ollama service and storage remain untouched by the v2 application install.':'拉取、查看和删除 Ollama 模型。v2 应用安装不会修改现有 Ollama 服务和存储。','Pull model':'拉取模型','Model name — e.g. qwen3:8b':'模型名称，例如 qwen3:8b','Pull':'拉取','Ready.':'就绪。','Loading...':'正在加载…','Installed':'已安装','Ollama pull complete':'Ollama 模型拉取完成','Ollama unreachable':'Ollama 无法连接','Ollama model deleted':'Ollama 模型已删除',
     'Browse HuggingFace':'浏览 HuggingFace','Search Hub metadata, inspect repository files, discover common quantized variants, then hand the result to Download or Compose Builder.':'搜索 Hub 元数据、查看仓库文件、发现常见量化变体，然后交给下载或 Compose 构建器。','All types':'全部类型','Text generation':'文本生成','Vision':'视觉','Embeddings':'嵌入','Speech recognition':'语音识别','Most downloads':'下载最多','Most likes':'点赞最多','Trending':'趋势','Recent':'最新','Search':'搜索','Search HuggingFace to begin.':'搜索 HuggingFace 以开始。','HuggingFace downloads':'HuggingFace 下载','Downloads default to':'下载默认保存到','Repository ID':'仓库 ID','Local directory (optional)':'本地目录（可选）','Download':'下载','HuggingFace download complete':'HuggingFace 下载完成',
     'Declarative model-serving stacks managed with Docker Compose. Existing shell scripts remain available only when Legacy Script Mode is enabled.':'通过 Docker Compose 管理的声明式模型服务堆栈。只有启用旧脚本模式后才会显示现有 Shell 脚本。','New deployment':'新建部署','Deployment':'部署','Engine':'引擎','Node':'节点','Fit':'适配度','Port':'端口','Status':'状态','Actions':'操作','No Compose deployments. Use Compose Builder to create one.':'还没有 Compose 部署，请使用 Compose 构建器创建。','Compose Builder':'Compose 构建器','Generate a DGX-aware Compose stack from model metadata and target-node capacity. The planner uses the existing model path rather than copying the checkpoint.':'根据模型元数据和目标节点容量生成适配 DGX 的 Compose 堆栈。规划器使用现有模型路径，不会复制模型文件。','Deployment inputs':'部署参数','Target node':'目标节点','Deployment name':'部署名称','Context length':'上下文长度','System reserve (GB)':'系统保留（GB）','Optimization profile':'优化配置','Conservative':'保守','Balanced':'均衡','Performance':'性能','Bind address':'绑定地址','Loopback — recommended':'回环地址 — 推荐','LAN — advanced':'局域网 — 高级','Prepare for LiteLLM routing':'准备接入 LiteLLM 路由','Records routing intent in deployment metadata.':'在部署元数据中记录路由意图。','Generate Compose':'生成 Compose','Select a model and generate a deployment plan.':'选择模型并生成部署计划。','Generated compose.yaml':'生成的 compose.yaml','Copy':'复制','Save deployment':'保存部署','Generate a deployment to preview YAML.':'生成部署后预览 YAML。','Deployment saved':'部署已保存','Select a model on the target node':'请在目标节点选择模型','No Compose-eligible models found on this node':'此节点没有符合 Compose 条件的模型','Remote inventory unavailable':'远程模型清单不可用',
@@ -62,9 +62,22 @@
     out = out.replace(/^([\d.]+) ms$/, '$1 毫秒');
     return out;
   }
+  // Most static labels are individual text nodes, but page descriptions and
+  // API-rendered rows can contain several English phrases in one node. Apply
+  // longer phrase substitutions as a fallback so those mixed nodes are also
+  // translated (and can be switched back to English without a reload).
+  function replacePhrases(value, table) {
+    let out = value;
+    Object.keys(table).filter(k => k.length >= 8 && /\s|[.,!?—]/.test(k))
+      .sort((a, b) => b.length - a.length)
+      .forEach(k => { if (out.includes(k)) out = out.split(k).join(table[k]); });
+    return out;
+  }
   const dictionary = value => {
-    const source = current === 'zh-CN' ? value : (reverse[value] || value);
-    return current === 'zh-CN' ? translateDynamic(zh[source] || value) : source;
+    if (current === 'zh-CN') {
+      return translateDynamic(replacePhrases(zh[value] || value, zh));
+    }
+    return replacePhrases(reverse[value] || value, reverse);
   };
 
   function translate(root = document) {
