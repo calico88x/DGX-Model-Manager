@@ -19,6 +19,7 @@
     <div class="top-spacer"></div>
     <div class="cluster-chip"><span class="live-dot"></span><span id="cluster-summary">Local node</span></div>
     <select class="node-select" id="top-node-select" aria-label="Selected node"><option value="local">Local node</option></select>
+    <select class="node-select language-select" id="language-select" aria-label="Language"><option value="en">English</option><option value="zh-CN">简体中文</option></select>
     <button class="user-chip" id="user-menu-btn" type="button"><span class="avatar" id="user-avatar">?</span><span class="user-name" id="user-name">Sign in</span></button>
   </header>
 
@@ -171,6 +172,7 @@
 
 <div class="modal-backdrop" id="generic-modal"><div class="modal"><div class="modal-head"><div class="modal-title" id="modal-title">Action</div><button class="modal-close" data-action="modal-close" type="button">×</button></div><div class="modal-body" id="modal-body"></div><div class="modal-foot" id="modal-foot"></div></div></div>
 <div class="toast" id="toast"></div>
+<script src="/static/i18n.js?v={{ version }}" defer></script>
 <script src="/static/app.js?v={{ version }}" defer></script>
 </body>
 </html>
